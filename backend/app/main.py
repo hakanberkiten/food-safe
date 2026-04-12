@@ -7,7 +7,11 @@ from app.models import user, scan, saved_product # Ensure models are loaded for 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Food-Safe API", version="1.0.0")
+app = FastAPI(
+    title="Gemma 4 Food-Safe AI API",
+    version="2.0.0",
+    description="Vision-to-Query workflow for multimodal ingredient extraction, toxicology RAG, and personalized food safety reasoning.",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,4 +28,4 @@ app.include_router(shared.router, prefix="/api/shared", tags=["Sharing"])
 
 @app.get("/")
 async def root():
-    return {"message": "Food-Safe API is running"}
+    return {"message": "Gemma 4 Food-Safe AI API is running"}

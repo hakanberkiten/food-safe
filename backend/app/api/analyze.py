@@ -4,12 +4,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.scan import ScanHistory
 from app.models.user import UserProfile, User
-from app.services.gemma_service import analyze_label
 from app.api.auth import get_current_user
-import uuid
+from app.schemas.food_safe import UserHealthProfile
+from app.workflows.agent_workflow import FoodSafeAgentWorkflow
 import secrets
 
 router = APIRouter()
+workflow = FoodSafeAgentWorkflow()
 
 @router.post("/")
 async def analyze(
@@ -42,16 +43,21 @@ async def analyze(
             }
 
     image_bytes = await file.read()
-    result = await analyze_label(image_bytes, profile_data)
+    workflow_result = await workflow.run(
+        image_bytes=image_bytes,
+        user_profile=UserHealthProfile.model_validate(profile_data),
+        mime_type=file.content_type,
+    )
+    result = workflow_result.model_dump()
 
     # Save to history
     share_token = secrets.token_urlsafe(16)
     scan = ScanHistory(
         user_id=current_user.id if current_user else None,
         session_id=session_id if not current_user else None,
-        product_name=result.get("product_name"),
-        ingredients_raw=", ".join(result.get("ingredients", [])),
-        danger_level=result.get("overall_safety", {}).get("status", "unknown"),
+        product_name=workflow_result.extracted_label.product_name,
+        ingredients_raw=", ".join(workflow_result.extracted_label.ingredients),
+        danger_level=workflow_result.risk_report.status,
         analysis_result=result,
         share_token=share_token
     )
