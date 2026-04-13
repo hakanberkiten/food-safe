@@ -44,6 +44,12 @@ class GoogleAIJSONClient:
         if not self._client:
             raise RuntimeError("GEMINI_API_KEY is not configured.")
 
+        logger.info(
+            "GoogleAI generate_json started. stage=%s preferred_model=%s fallback_model=%s",
+            stage,
+            preferred_model,
+            fallback_model,
+        )
         try:
             payload = await self._call_model(
                 model_name=preferred_model,
@@ -100,6 +106,7 @@ class GoogleAIJSONClient:
         schema: type[SchemaType],
         temperature: float,
     ) -> SchemaType:
+        logger.info("GoogleAI _call_model request started. model=%s", model_name)
         response = await self._client.aio.models.generate_content(
             model=model_name,
             contents=contents,
@@ -109,6 +116,7 @@ class GoogleAIJSONClient:
                 response_schema=schema,
             ),
         )
+        logger.info("GoogleAI _call_model response received. model=%s", model_name)
 
         if getattr(response, "parsed", None) is not None:
             return response.parsed

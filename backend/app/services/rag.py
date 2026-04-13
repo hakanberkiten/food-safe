@@ -35,8 +35,15 @@ class ToxicologyRAGService:
 
     def retrieve(self, ingredients: list[str]) -> list[ToxicologyFinding]:
         if not ingredients:
+            logger.info("RAG retrieve skipped because no ingredients were extracted.")
             return []
 
+        logger.info(
+            "RAG retrieve started. ingredients=%s collection=%s use_cloud=%s",
+            len(ingredients),
+            self.collection_name,
+            self.use_cloud,
+        )
         knowledge = self._load_seed_knowledge()
         collection = self._get_collection()
 
@@ -66,6 +73,7 @@ class ToxicologyRAGService:
                 )
             )
 
+        logger.info("RAG retrieve completed. findings=%s", len(findings))
         return findings
 
     def _load_seed_knowledge(self) -> list[dict[str, Any]]:
@@ -163,6 +171,7 @@ class ToxicologyRAGService:
                 n_results=self.top_k,
                 include=["documents", "metadatas", "distances"],
             )
+            logger.info("RAG query completed for ingredient=%s", ingredient)
         except Exception as error:
             logger.warning(
                 "Chroma query failed for ingredient '%s'; using fallback knowledge.",

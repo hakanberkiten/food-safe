@@ -34,6 +34,13 @@ class FoodSafetyReasoner:
         retrieved_evidence: list[ToxicologyFinding],
         user_profile: UserHealthProfile,
     ) -> tuple[RiskAssessment, ModelExecutionTrace]:
+        logger.info(
+            "Reasoning synthesize started. preferred_model=%s fallback_model=%s ingredients=%s evidence=%s",
+            self.model_name,
+            self.fallback_model,
+            len(extracted_label.ingredients),
+            len(retrieved_evidence),
+        )
         if self.ai_client.available:
             try:
                 llm_result = await self.ai_client.generate_json(
@@ -54,6 +61,12 @@ class FoodSafetyReasoner:
                     extracted_label=extracted_label,
                     user_profile=user_profile,
                 )
+                logger.info(
+                    "Reasoning model call completed. actual_model=%s fallback_used=%s status=%s",
+                    llm_result.trace.actual_model,
+                    llm_result.trace.fallback_used,
+                    report.status,
+                )
                 return report, llm_result.trace
             except Exception as error:
                 logger.warning(
@@ -68,6 +81,7 @@ class FoodSafetyReasoner:
         )
         if not self.ai_client.available:
             logger.warning("Reasoning stage is using heuristic fallback because GEMINI_API_KEY is missing.")
+        logger.info("Reasoning heuristic fallback completed. status=%s", report.status)
         trace = ModelExecutionTrace(
             stage="reasoning",
             preferred_model=self.model_name,
@@ -128,9 +142,36 @@ class FoodSafetyReasoner:
         retrieved_evidence: list[ToxicologyFinding],
         user_profile: UserHealthProfile,
     ) -> str:
+        compact_evidence = []
+        for finding in retrieved_evidence[:8]:
+            compact_evidence.append(
+                {
+                    "ingredient": finding.ingredient,
+                    "risk_level": finding.risk_level,
+                    "summary": finding.summary,
+                    "profile_flags": finding.profile_flags,
+                    "evidence": finding.evidence[:2],
+                    "sources": [
+                        {
+                            "title": source.title,
+                            "organization": source.organization,
+                            "citation": source.citation,
+                        }
+                        for source in finding.sources[:2]
+                    ],
+                }
+            )
+
         payload = {
-            "extracted_label": extracted_label.model_dump(),
-            "retrieved_evidence": [finding.model_dump() for finding in retrieved_evidence],
+            "extracted_label": {
+                "product_name": extracted_label.product_name,
+                "ingredients": extracted_label.ingredients[:15],
+                "allergens": extracted_label.allergens,
+                "claims": extracted_label.claims,
+                "cross_contamination_warnings": extracted_label.cross_contamination_warnings,
+                "detected_language": extracted_label.detected_language,
+            },
+            "retrieved_evidence": compact_evidence,
             "user_profile": user_profile.model_dump(),
         }
         return (

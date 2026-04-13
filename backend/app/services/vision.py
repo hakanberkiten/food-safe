@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+from io import BytesIO
 from typing import Any
 
 from app.core.config import settings
 from app.schemas.food_safe import IngredientExtraction, ModelExecutionTrace
 from app.services.google_ai import GoogleAIJSONClient
 from google.genai import types
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +26,18 @@ class VisionService:
         if not image_bytes:
             raise ValueError("image_bytes cannot be empty")
 
+        processed_bytes, processed_mime_type = self._prepare_image(image_bytes, mime_type)
+        logger.info(
+            "Vision extract_label started. preferred_model=%s fallback_model=%s mime_type=%s bytes=%s",
+            self.model_name,
+            self.fallback_model,
+            processed_mime_type,
+            len(processed_bytes),
+        )
         prompt = self.build_prompt()
         contents = [
             prompt,
-            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            types.Part.from_bytes(data=processed_bytes, mime_type=processed_mime_type),
         ]
 
         if self.ai_client.available:
@@ -41,6 +51,12 @@ class VisionService:
                     temperature=0.0,
                 )
                 extraction = self._normalize_extraction(result.payload)
+                logger.info(
+                    "Vision model call completed. actual_model=%s fallback_used=%s ingredients=%s",
+                    result.trace.actual_model,
+                    result.trace.fallback_used,
+                    len(extraction.ingredients),
+                )
                 return extraction, result.trace
             except Exception as error:
                 logger.warning(
@@ -117,3 +133,25 @@ Required JSON schema:
         if isinstance(payload, IngredientExtraction):
             return payload
         return IngredientExtraction.model_validate(payload)
+
+    def _prepare_image(self, image_bytes: bytes, mime_type: str) -> tuple[bytes, str]:
+        try:
+            with Image.open(BytesIO(image_bytes)) as image:
+                max_dim = 1600
+                if max(image.size) <= max_dim and mime_type == "image/jpeg":
+                    return image_bytes, mime_type
+
+                image = image.convert("RGB")
+                image.thumbnail((max_dim, max_dim))
+                buffer = BytesIO()
+                image.save(buffer, format="JPEG", quality=85, optimize=True)
+                processed = buffer.getvalue()
+                logger.info(
+                    "Vision image preprocessed. original_bytes=%s processed_bytes=%s",
+                    len(image_bytes),
+                    len(processed),
+                )
+                return processed, "image/jpeg"
+        except Exception as error:
+            logger.warning("Vision image preprocessing failed; using original bytes.", exc_info=error)
+            return image_bytes, mime_type

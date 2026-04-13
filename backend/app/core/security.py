@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
-from typing import Optional, Union
+from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt wheel / passlib compatibility is brittle on some local setups.
+# argon2-cffi is already installed and is a better default for new hashes.
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 ALGORITHM = "HS256"
 

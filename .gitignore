@@ -17,11 +17,13 @@ env/
 # Database
 *.db
 *.sqlite3
+backend/knowledge/chroma/
 
 # Node
 node_modules/
 dist/
 .angular/
+flutter/build/
 
 # IDE
 .vscode/
