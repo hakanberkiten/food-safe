@@ -1,61 +1,279 @@
 import 'package:flutter/material.dart';
-
 import '../app/app_controller.dart';
 import '../widgets/ui.dart';
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({
-    super.key,
-    required this.controller,
-    required this.onNavigate,
-  });
+  const DashboardPage({super.key, required this.controller, required this.onNavigate});
 
   final AppController controller;
   final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context) {
-    final lastAnalysis = controller.lastAnalysis;
-    return ListView(
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _QuickActions(controller: controller, onNavigate: onNavigate),
+                  const SizedBox(height: 32),
+                  _StatisticsRow(controller: controller),
+                  const SizedBox(height: 32),
+                  _RecentActivityPlaceholder(controller: controller, onNavigate: onNavigate),
+                ],
+              ),
+            ),
+            const SizedBox(height: 100), // Bottom nav spacer
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({required this.controller, required this.onNavigate});
+  final AppController controller;
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          'Quick Actions',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _ActionCard(
+                icon: Icons.camera_alt_rounded,
+                label: 'Scan Label',
+                subtitle: 'Vision AI Analysis',
+                color: AppPalette.emerald,
+                onTap: () => onNavigate(1),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _ActionCard(
+                icon: Icons.history_rounded,
+                label: 'History',
+                subtitle: 'Your Past Scans',
+                color: AppPalette.ink,
+                onTap: () => onNavigate(controller.isAuthenticated ? 2 : 3),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppPalette.panel,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppPalette.ink.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: AppPalette.ink,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                color: AppPalette.muted,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatisticsRow extends StatelessWidget {
+  const _StatisticsRow({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatItem(
+            label: 'Safe Products',
+            count: controller.safeProducts.toString(),
+            icon: Icons.verified_user_rounded,
+            color: AppPalette.emerald,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _StatItem(
+            label: 'Total Scans',
+            count: controller.totalScans.toString(),
+            icon: Icons.qr_code_scanner_rounded,
+            color: AppPalette.amber,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  const _StatItem({
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String count;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppPalette.panel,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppPalette.sand.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color.withValues(alpha: 0.6)),
+          const SizedBox(height: 8),
+          Text(
+            count,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: AppPalette.muted),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentActivityPlaceholder extends StatelessWidget {
+  const _RecentActivityPlaceholder({required this.controller, required this.onNavigate});
+  final AppController controller;
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final lastAnalysis = controller.lastAnalysis;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Recent Activity',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 16),
         AppPanel(
-          color: AppPalette.forest,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppPalette.mint,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'Control Room',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+              Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppPalette.mint.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.flash_on_rounded, color: AppPalette.mint),
                   ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Tum endpointleri tek panelden yonet, taramayi hizlica yap, sonucu paylas.',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: const Color(0xFFF8F2E8),
-                  fontSize: 40,
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Bu dashboard root health check, auth state, anonim session, son analiz ve temel aksiyonlari tek yerde toplar.',
-                style: TextStyle(
-                  color: Color(0xFFD7E7DF),
-                  fontSize: 16,
-                  height: 1.6,
-                ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ready to Analyze',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                        ),
+                        Text(
+                          'Upload a product label to get started.',
+                          style: TextStyle(color: AppPalette.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 22),
               Wrap(
@@ -65,231 +283,49 @@ class DashboardPage extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: () => onNavigate(1),
                     icon: const Icon(Icons.document_scanner_rounded),
-                    label: const Text('Yeni Tarama'),
+                    label: const Text('New Scan'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: () =>
-                        onNavigate(controller.isAuthenticated ? 3 : 6),
+                    onPressed: () => onNavigate(controller.isAuthenticated ? 2 : 3),
                     icon: Icon(
-                      controller.isAuthenticated
-                          ? Icons.history_rounded
-                          : Icons.login_rounded,
+                      controller.isAuthenticated ? Icons.history_rounded : Icons.login_rounded,
                     ),
                     label: Text(
-                      controller.isAuthenticated ? 'Gecmise Git' : 'Giris Yap',
+                      controller.isAuthenticated ? 'View History' : 'Login Now',
                     ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: controller.refreshHealth,
-                    icon: const Icon(Icons.sync_rounded),
-                    label: const Text('Health Check'),
                   ),
                 ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: [
-            SizedBox(
-              width: 330,
-              child: _MetricCard(
-                title: 'Backend',
-                value: controller.backendReachable ? 'Online' : 'Offline',
-                body: controller.healthMessage ?? 'Health state unknown.',
-              ),
+        const SizedBox(height: 24),
+        if (lastAnalysis != null) ...[
+          const SizedBox(height: 24),
+          Text(
+            'Latest Result',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
             ),
-            SizedBox(
-              width: 330,
-              child: _MetricCard(
-                title: 'Auth State',
-                value: controller.isAuthenticated ? 'Signed In' : 'Anonymous',
-                body: controller.isAuthenticated
-                    ? controller.currentEmail ?? 'Authenticated session'
-                    : 'Profile and analyze can run with session_id fallback.',
-              ),
+          ),
+          const SizedBox(height: 16),
+          AnalysisSummaryView(
+            analysis: lastAnalysis.result,
+            scanId: lastAnalysis.scanId,
+            shareToken: lastAnalysis.shareToken,
+          ),
+        ] else ...[
+          const SizedBox(height: 24),
+          EmptyState(
+            title: 'No recent scans',
+            body: 'Your latest analysis results will appear here for quick access.',
+            action: OutlinedButton(
+              onPressed: () => onNavigate(1),
+              child: const Text('Start First Scan'),
             ),
-            SizedBox(
-              width: 330,
-              child: _MetricCard(
-                title: 'Session',
-                value: controller.sessionId.substring(0, 12),
-                body: 'Anonymous scans and profile drafts are attached here.',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: [
-            SizedBox(
-              width: 480,
-              child: AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Endpoint map',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    const _EndpointTile(
-                      method: 'GET',
-                      path: '/',
-                      note: 'API root ping',
-                    ),
-                    const _EndpointTile(
-                      method: 'POST',
-                      path: '/api/auth/signup',
-                      note: 'Create account',
-                    ),
-                    const _EndpointTile(
-                      method: 'POST',
-                      path: '/api/auth/login',
-                      note: 'Token login',
-                    ),
-                    const _EndpointTile(
-                      method: 'GET/POST',
-                      path: '/api/profile/',
-                      note: 'Profile read and update',
-                    ),
-                    const _EndpointTile(
-                      method: 'POST',
-                      path: '/api/analyze/',
-                      note: 'Image upload and safety reasoning',
-                    ),
-                    const _EndpointTile(
-                      method: 'GET',
-                      path: '/api/history/scans',
-                      note: 'User scan history',
-                    ),
-                    const _EndpointTile(
-                      method: 'GET',
-                      path: '/api/history/saved-products',
-                      note: 'Saved product shortlist',
-                    ),
-                    const _EndpointTile(
-                      method: 'POST',
-                      path: '/api/history/save-product',
-                      note: 'Promote a scan into saved list',
-                    ),
-                    const _EndpointTile(
-                      method: 'GET',
-                      path: '/api/shared/{token}',
-                      note: 'Public report lookup',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 520,
-              child: lastAnalysis == null
-                  ? EmptyState(
-                      title: 'Henüz tarama yok',
-                      body:
-                          'Analyze sayfasından bir etiket yuklediğinde son rapor burada kisa ozet halinde gorunecek.',
-                      action: FilledButton(
-                        onPressed: () => onNavigate(1),
-                        child: const Text('Analyze Sayfasina Git'),
-                      ),
-                    )
-                  : AnalysisSummaryView(
-                      analysis: lastAnalysis.result,
-                      scanId: lastAnalysis.scanId,
-                      shareToken: lastAnalysis.shareToken,
-                    ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ],
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.title,
-    required this.value,
-    required this.body,
-  });
-
-  final String title;
-  final String value;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontSize: 34),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: const TextStyle(color: AppPalette.muted, height: 1.5),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EndpointTile extends StatelessWidget {
-  const _EndpointTile({
-    required this.method,
-    required this.path,
-    required this.note,
-  });
-
-  final String method;
-  final String path;
-  final String note;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TagPill(
-            label: method,
-            color: const Color(0xFFD8E9E1),
-            textColor: AppPalette.mint,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  path,
-                  style: const TextStyle(
-                    color: AppPalette.ink,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(note, style: const TextStyle(color: AppPalette.muted)),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

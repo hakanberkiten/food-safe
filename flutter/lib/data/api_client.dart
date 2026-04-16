@@ -140,6 +140,18 @@ class ApiClient {
     return _decodeJsonList(response).map(ScanHistoryItem.fromJson).toList();
   }
 
+  Future<Map<String, int>> getHistoryStats() async {
+    final response = await http.get(
+      _uri('/api/history/stats'),
+      headers: _headers(),
+    );
+    final data = _decodeJsonObject(response);
+    return {
+      'total_scans': data['total_scans'] as int,
+      'safe_products': data['safe_products'] as int,
+    };
+  }
+
   Future<List<SavedProductItem>> getSavedProducts() async {
     final response = await http.get(
       _uri('/api/history/saved-products'),

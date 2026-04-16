@@ -56,3 +56,15 @@ async def save_product(
     db.add(saved)
     db.commit()
     return {"message": "Product saved to safe list"}
+
+@router.get("/stats")
+async def get_history_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    total_scans = db.query(ScanHistory).filter(ScanHistory.user_id == current_user.id).count()
+    safe_products = db.query(SavedProduct).filter(SavedProduct.user_id == current_user.id).count()
+    return {
+        "total_scans": total_scans,
+        "safe_products": safe_products
+    }

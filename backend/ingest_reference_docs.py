@@ -5,7 +5,10 @@ import logging
 import re
 from pathlib import Path
 
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 from pypdf import PdfReader
 
 from app.core.config import settings

@@ -5,7 +5,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import chromadb
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
 
 from app.core.config import settings
 from app.schemas.food_safe import ScientificSource, ToxicologyFinding

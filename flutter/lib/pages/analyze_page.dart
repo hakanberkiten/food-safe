@@ -70,7 +70,7 @@ class _AnalyzePageState extends State<AnalyzePage> {
   Future<void> _analyze() async {
     if (_selectedFile == null || _selectedFileBytes == null) {
       setState(() {
-        _errorMessage = 'Once bir etiket gorseli sec.';
+        _errorMessage = 'Please select a label image first.';
       });
       return;
     }
@@ -140,180 +140,187 @@ class _AnalyzePageState extends State<AnalyzePage> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Share token panoya kopyalandi.')),
+      const SnackBar(content: Text('Share token copied to clipboard.')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        AppPanel(
-          color: AppPalette.forest,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Etiketi yukle, V2Q akisini calistir.',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: const Color(0xFFF8F2E8),
-                  fontSize: 36,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bu sayfa /api/analyze/ endpointine multipart upload yapar, session veya auth baglamini ekler ve kompakt risk raporunu getirir.',
-                style: TextStyle(color: Color(0xFFD7E7DF), height: 1.6),
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                controller: _backendUrlController,
-                decoration: InputDecoration(
-                  labelText: 'Backend URL',
-                  hintText: 'http://127.0.0.1:8000',
-                  filled: true,
-                  fillColor: const Color(0xFFF8F2E8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ],
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStepHeader(
+            step: '1',
+            title: 'Upload Label',
+            subtitle: 'Snap a clear photo of product ingredients.',
           ),
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: [
-            SizedBox(
-              width: 360,
-              child: AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Input asset',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      height: 240,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        color: const Color(0xFFF0E9DC),
-                      ),
-                      child: _selectedFileBytes == null
-                          ? const Center(
-                              child: Text(
-                                'PNG, JPG veya WEBP sec',
-                                style: TextStyle(color: AppPalette.muted),
-                              ),
-                            )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(24),
-                              child: Image.memory(
-                                _selectedFileBytes!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_selectedFile != null)
-                      Text(
-                        _selectedFile!.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _isLoading ? null : _pickImage,
-                        icon: const Icon(Icons.add_photo_alternate_outlined),
-                        label: const Text('Etiket Sec'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _isLoading ? null : _analyze,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppPalette.amber,
-                        ),
-                        child: Text(
-                          _isLoading ? 'Analiz ediliyor...' : 'Analiz Et',
-                        ),
-                      ),
-                    ),
-                    if (_statusMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _statusMessage!,
-                        style: const TextStyle(
-                          color: AppPalette.mint,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _errorMessage!,
-                        style: const TextStyle(
-                          color: AppPalette.rose,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+          const SizedBox(height: 16),
+          _buildImagePicker(),
+          const SizedBox(height: 32),
+          _buildStepHeader(
+            step: '2',
+            title: 'AI Analysis',
+            subtitle: 'We cross-reference ingredients with your profile.',
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isLoading ? null : _analyze,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: AppPalette.amber,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              icon: _isLoading 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.psychology_rounded),
+              label: Text(
+                _isLoading ? 'Analyzing...' : 'Start Health Scan',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
               ),
             ),
-            SizedBox(
-              width: 720,
-              child: _response == null
-                  ? const EmptyState(
-                      title: 'Sonuc burada gorunecek',
-                      body:
-                          'Etiketi gonderdiginde scan id, share token ve risk raporu bu panelde acilacak.',
-                    )
-                  : AnalysisSummaryView(
-                      analysis: _response!.result,
-                      scanId: _response!.scanId,
-                      shareToken: _response!.shareToken,
-                      footer: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _copyShareToken,
-                            icon: const Icon(Icons.copy_rounded),
-                            label: const Text('Token Kopyala'),
-                          ),
-                          if (widget.controller.isAuthenticated)
-                            FilledButton.icon(
-                              onPressed: _isSavingProduct ? null : _saveProduct,
-                              icon: const Icon(Icons.bookmark_add_outlined),
-                              label: Text(
-                                _isSavingProduct
-                                    ? 'Kaydediliyor...'
-                                    : 'Kaydedilenlere Ekle',
-                              ),
-                            )
-                          else
-                            const Text(
-                              'Kaydetme icin giris yapman gerekiyor.',
-                              style: TextStyle(color: AppPalette.muted),
-                            ),
-                        ],
-                      ),
-                    ),
+          ),
+          if (_statusMessage != null || _errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                _statusMessage ?? _errorMessage!,
+                style: TextStyle(
+                  color: _errorMessage != null ? AppPalette.rose : AppPalette.mint,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
+          const SizedBox(height: 40),
+          if (_response != null) ...[
+            _buildStepHeader(
+              step: '3',
+              title: 'Safety Report',
+              subtitle: 'Detailed breakdown and risk level.',
+            ),
+            const SizedBox(height: 16),
+            AnalysisSummaryView(
+              analysis: _response!.result,
+              scanId: _response!.scanId,
+              shareToken: _response!.shareToken,
+              footer: _buildAnalysisFooter(),
+            ),
+          ] else
+            const EmptyState(
+              title: 'No scan result yet',
+              body: 'Complete steps 1 and 2 to generate your personalized health safety report.',
+            ),
+          const SizedBox(height: 120),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepHeader({required String step, required String title, required String subtitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: AppPalette.mint,
+                shape: BoxShape.circle,
+              ),
+              child: Text(step, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+            ),
+            const SizedBox(width: 12),
+            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppPalette.ink)),
+          ],
         ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 44),
+          child: Text(subtitle, style: const TextStyle(color: AppPalette.muted, height: 1.4)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImagePicker() {
+    return AppPanel(
+      padding: EdgeInsets.zero,
+      child: InkWell(
+        onTap: _pickImage,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppPalette.mint.withValues(alpha: 0.1), width: 2),
+          ),
+          child: _selectedFileBytes == null
+              ? const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo_rounded, size: 48, color: AppPalette.mint),
+                    SizedBox(height: 12),
+                    Text('Select Product Label', style: TextStyle(fontWeight: FontWeight.w700, color: AppPalette.mint)),
+                  ],
+                )
+              : Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.memory(_selectedFileBytes!, fit: BoxFit.cover),
+                    ),
+                    Positioned(
+                      right: 12,
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                        child: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalysisFooter() {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _copyShareToken,
+          icon: const Icon(Icons.ios_share_rounded),
+          label: const Text('Share Token'),
+        ),
+        if (widget.controller.isAuthenticated)
+          FilledButton.icon(
+            onPressed: _isSavingProduct ? null : _saveProduct,
+            icon: const Icon(Icons.bookmark_add_rounded),
+            label: Text(_isSavingProduct ? 'Saving...' : 'Save to List'),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppPalette.amber.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'Sign in to save products',
+              style: TextStyle(color: AppPalette.amber, fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+          ),
       ],
     );
   }

@@ -48,7 +48,7 @@ class _AuthPageState extends State<AuthPage> {
           email: _loginEmailController.text.trim(),
           password: _loginPasswordController.text,
         );
-        _statusMessage = 'Giris basarili.';
+        _statusMessage = 'Successfully logged in.';
       } else {
         await widget.controller.signup(
           email: _signupEmailController.text.trim(),
@@ -57,7 +57,7 @@ class _AuthPageState extends State<AuthPage> {
               ? null
               : _signupNameController.text.trim(),
         );
-        _statusMessage = 'Kayit tamamlandi ve token alindi.';
+        _statusMessage = 'Account created successfully.';
       }
       setState(() {});
     } catch (error) {
@@ -74,185 +74,145 @@ class _AuthPageState extends State<AuthPage> {
   Future<void> _logout() async {
     await widget.controller.logout();
     setState(() {
-      _statusMessage = 'Cikis yapildi.';
+      _statusMessage = 'Logged out successfully.';
       _errorMessage = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        AppPanel(
-          color: AppPalette.forest,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Auth endpointlerini bagla ve oturum durumunu yonet.',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: const Color(0xFFF8F2E8),
-                  fontSize: 34,
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        children: [
+          AppPanel(
+            color: AppPalette.forest,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isLoginMode ? 'Welcome Back' : 'Create Account',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: const Color(0xFFF8F2E8),
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bu ekran /api/auth/signup ve /api/auth/login endpointlerini kullanir. Gecmis ve kaydedilen urunler sayfalari token oldugunda aktiflesir.',
-                style: TextStyle(color: Color(0xFFD7E7DF), height: 1.6),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Text(
+                  _isLoginMode
+                      ? 'Sign in to access your personalized health reports and history.'
+                      : 'Join us to get AI-powered product insights tailored to your health.',
+                  style: const TextStyle(color: Color(0xFFD7E7DF), height: 1.5),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: [
-            SizedBox(
-              width: 620,
-              child: AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment<bool>(
-                          value: true,
-                          label: Text('Login'),
-                          icon: Icon(Icons.login_rounded),
-                        ),
-                        ButtonSegment<bool>(
-                          value: false,
-                          label: Text('Signup'),
-                          icon: Icon(Icons.person_add_alt_1_rounded),
-                        ),
-                      ],
-                      selected: {_isLoginMode},
-                      onSelectionChanged: (selection) {
-                        setState(() {
-                          _isLoginMode = selection.first;
-                          _errorMessage = null;
-                          _statusMessage = null;
-                        });
-                      },
+          const SizedBox(height: 24),
+          AppPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment<bool>(
+                      value: true,
+                      label: Text('Login'),
+                      icon: Icon(Icons.login_rounded),
                     ),
-                    const SizedBox(height: 20),
-                    if (_isLoginMode) ...[
-                      _AuthField(
-                        controller: _loginEmailController,
-                        label: 'Email',
-                      ),
-                      const SizedBox(height: 14),
-                      _AuthField(
-                        controller: _loginPasswordController,
-                        label: 'Password',
-                        obscureText: true,
-                      ),
-                    ] else ...[
-                      _AuthField(
-                        controller: _signupNameController,
-                        label: 'Full name',
-                      ),
-                      const SizedBox(height: 14),
-                      _AuthField(
-                        controller: _signupEmailController,
-                        label: 'Email',
-                      ),
-                      const SizedBox(height: 14),
-                      _AuthField(
-                        controller: _signupPasswordController,
-                        label: 'Password',
-                        obscureText: true,
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    FilledButton.icon(
-                      onPressed: _isSubmitting ? null : _submit,
-                      icon: Icon(
-                        _isLoginMode
-                            ? Icons.login_rounded
-                            : Icons.person_add_alt_1_rounded,
-                      ),
-                      label: Text(
-                        _isSubmitting
-                            ? 'Islem suruyor...'
-                            : _isLoginMode
-                            ? 'Login'
-                            : 'Signup',
-                      ),
+                    ButtonSegment<bool>(
+                      value: false,
+                      label: Text('Sign Up'),
+                      icon: Icon(Icons.person_add_rounded),
                     ),
-                    if (_statusMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _statusMessage!,
-                        style: const TextStyle(
-                          color: AppPalette.mint,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _errorMessage!,
-                        style: const TextStyle(
-                          color: AppPalette.rose,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
                   ],
+                  selected: {_isLoginMode},
+                  onSelectionChanged: (selection) {
+                    setState(() {
+                      _isLoginMode = selection.first;
+                      _errorMessage = null;
+                      _statusMessage = null;
+                    });
+                  },
                 ),
-              ),
-            ),
-            SizedBox(
-              width: 440,
-              child: AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Current auth state',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    StatusBadge(
-                      label: widget.controller.isAuthenticated
-                          ? 'SIGNED_IN'
-                          : 'ANONYMOUS',
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      widget.controller.isAuthenticated
-                          ? 'Current email: ${widget.controller.currentEmail}'
-                          : 'History and saved products endpoints require login.',
-                      style: const TextStyle(
-                        color: AppPalette.muted,
-                        height: 1.6,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    if (widget.controller.isAuthenticated)
-                      FilledButton.icon(
-                        onPressed: _logout,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppPalette.rose,
-                        ),
-                        icon: const Icon(Icons.logout_rounded),
-                        label: const Text('Logout'),
-                      )
-                    else
-                      const Text(
-                        'Anonim modda analiz ve profil yine calisir. Token sadece kullaniciya ait gecmis ve saved listeleri acar.',
-                        style: TextStyle(color: AppPalette.muted, height: 1.6),
-                      ),
-                  ],
+                const SizedBox(height: 24),
+                if (_isLoginMode) ...[
+                  _AuthField(
+                    controller: _loginEmailController,
+                    label: 'Email Address',
+                  ),
+                  const SizedBox(height: 16),
+                  _AuthField(
+                    controller: _loginPasswordController,
+                    label: 'Password',
+                    obscureText: true,
+                  ),
+                ] else ...[
+                  _AuthField(
+                    controller: _signupNameController,
+                    label: 'Full Name',
+                  ),
+                  const SizedBox(height: 16),
+                  _AuthField(
+                    controller: _signupEmailController,
+                    label: 'Email Address',
+                  ),
+                  const SizedBox(height: 16),
+                  _AuthField(
+                    controller: _signupPasswordController,
+                    label: 'Password',
+                    obscureText: true,
+                  ),
+                ],
+                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: _isSubmitting ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: Icon(
+                    _isLoginMode
+                        ? Icons.login_rounded
+                        : Icons.person_add_rounded,
+                  ),
+                  label: Text(
+                    _isSubmitting
+                        ? 'Connecting...'
+                        : _isLoginMode
+                        ? 'Sign In'
+                        : 'Create Account',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
                 ),
-              ),
+                if (_statusMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _statusMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppPalette.mint,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppPalette.rose,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
-      ],
+          ),
+          const SizedBox(height: 120),
+        ],
+      ),
     );
   }
 }

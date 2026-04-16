@@ -4,6 +4,8 @@ import '../app/app_controller.dart';
 import '../models/app_models.dart';
 import '../widgets/ui.dart';
 
+import '../pages/auth_page.dart';
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.controller});
 
@@ -17,9 +19,8 @@ class _ProfilePageState extends State<ProfilePage> {
   late final TextEditingController _allergiesController;
   late final TextEditingController _conditionsController;
   late final TextEditingController _specialController;
-  late bool _lastAuthState;
 
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _isSaving = false;
   String? _errorMessage;
   String? _statusMessage;
@@ -30,7 +31,6 @@ class _ProfilePageState extends State<ProfilePage> {
     _allergiesController = TextEditingController();
     _conditionsController = TextEditingController();
     _specialController = TextEditingController();
-    _lastAuthState = widget.controller.isAuthenticated;
     widget.controller.addListener(_handleControllerChange);
     _loadProfile();
   }
@@ -40,7 +40,6 @@ class _ProfilePageState extends State<ProfilePage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_handleControllerChange);
-      _lastAuthState = widget.controller.isAuthenticated;
       widget.controller.addListener(_handleControllerChange);
     }
   }
@@ -55,15 +54,17 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _handleControllerChange() {
-    final authState = widget.controller.isAuthenticated;
-    if (_lastAuthState == authState) {
-      return;
+    if (mounted) {
+      setState(() {});
+      if (widget.controller.isAuthenticated) {
+        _loadProfile();
+      }
     }
-    _lastAuthState = authState;
-    _loadProfile();
   }
 
   Future<void> _loadProfile() async {
+    if (!widget.controller.isAuthenticated && widget.controller.sessionId.isEmpty) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -78,11 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (error) {
       _errorMessage = error.toString();
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -98,172 +95,139 @@ class _ProfilePageState extends State<ProfilePage> {
         allergies: _splitValues(_allergiesController.text),
         conditions: _splitValues(_conditionsController.text),
         special: _splitValues(_specialController.text),
-        sessionId: widget.controller.isAuthenticated
-            ? null
-            : widget.controller.sessionId,
+        sessionId: widget.controller.isAuthenticated ? null : widget.controller.sessionId,
       );
       await widget.controller.saveProfile(payload);
-      setState(() {
-        _statusMessage = 'Profil kaydedildi.';
-      });
+      setState(() => _statusMessage = 'Profile updated successfully.');
     } catch (error) {
-      setState(() {
-        _errorMessage = error.toString();
-      });
+      setState(() => _errorMessage = error.toString());
     } finally {
-      setState(() {
-        _isSaving = false;
-      });
+      setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        AppPanel(
-          color: AppPalette.forest,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Saglik profilini guncelle, reasoning katmanini kisisellestir.',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: const Color(0xFFF8F2E8),
-                  fontSize: 34,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                widget.controller.isAuthenticated
-                    ? 'Bu sayfa /api/profile/ endpointine token ile bagli.'
-                    : 'Su anda anonim session ile calisiyorsun. Profil verin session_id uzerinden kaydolacak.',
-                style: const TextStyle(color: Color(0xFFD7E7DF), height: 1.6),
-              ),
-            ],
+    if (!widget.controller.isAuthenticated) {
+      return AuthPage(controller: widget.controller);
+    }
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildUserInfoHeader(context),
+          const SizedBox(height: 32),
+          Text(
+            'Health Profile',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
-        ),
-        const SizedBox(height: 20),
-        if (_isLoading)
-          const AppPanel(child: Center(child: CircularProgressIndicator()))
-        else
-          Wrap(
-            spacing: 20,
-            runSpacing: 20,
-            children: [
-              SizedBox(
-                width: 640,
-                child: AppPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Profile fields',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 16),
-                      _ProfileField(
-                        controller: _allergiesController,
-                        label: 'Allergies',
-                        hint: 'gluten, soy, peanut, lactose',
-                      ),
-                      const SizedBox(height: 14),
-                      _ProfileField(
-                        controller: _conditionsController,
-                        label: 'Conditions',
-                        hint: 'celiac, hypertension, diabetes, IBS',
-                      ),
-                      const SizedBox(height: 14),
-                      _ProfileField(
-                        controller: _specialController,
-                        label: 'Special contexts',
-                        hint: 'pregnant, child, low sodium, athlete',
-                      ),
-                      const SizedBox(height: 18),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          FilledButton.icon(
-                            onPressed: _isSaving ? null : _saveProfile,
-                            icon: const Icon(Icons.save_outlined),
-                            label: Text(
-                              _isSaving ? 'Kaydediliyor...' : 'Profili Kaydet',
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _loadProfile,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Yeniden Yukle'),
-                          ),
-                        ],
-                      ),
-                      if (_statusMessage != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          _statusMessage!,
-                          style: const TextStyle(
-                            color: AppPalette.mint,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                      if (_errorMessage != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage!,
-                          style: const TextStyle(
-                            color: AppPalette.rose,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ],
+          const SizedBox(height: 16),
+          if (_isLoading)
+            const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+          else
+            AppPanel(
+              child: Column(
+                children: [
+                  _ProfileField(
+                    controller: _allergiesController,
+                    label: 'Allergies',
+                    hint: 'e.g. gluten, soy, peanut, lactose',
                   ),
-                ),
-              ),
-              SizedBox(
-                width: 420,
-                child: AppPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'How this is used',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Profile alanlari reasoning asamasinda allergen, gluten, sodyum ve benzeri sinyallerle esitlestirilir. Boylece ayni urun farkli kullanicilar icin farkli bir caution seviyesine cikabilir.',
-                        style: TextStyle(color: AppPalette.muted, height: 1.6),
-                      ),
-                      const SizedBox(height: 18),
-                      TagPill(
-                        label: widget.controller.isAuthenticated
-                            ? 'Token-bound profile'
-                            : 'Session-bound profile',
-                        color: widget.controller.isAuthenticated
-                            ? const Color(0xFFD8E9E1)
-                            : const Color(0xFFF5E4D9),
-                        textColor: widget.controller.isAuthenticated
-                            ? AppPalette.mint
-                            : AppPalette.amber,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Session ID: ${widget.controller.sessionId}',
-                        style: const TextStyle(
-                          color: AppPalette.muted,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 16),
+                  _ProfileField(
+                    controller: _conditionsController,
+                    label: 'Chronic Diseases',
+                    hint: 'e.g. celiac, hypertension, diabetes',
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  _ProfileField(
+                    controller: _specialController,
+                    label: 'Special Dietary Needs',
+                    hint: 'e.g. vegan, pregnant, low sodium',
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _isSaving ? null : _saveProfile,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      icon: const Icon(Icons.save_rounded),
+                      label: Text(_isSaving ? 'Saving...' : 'Save Profile'),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
+          const SizedBox(height: 32),
+          _buildUsageInfo(context),
+          const SizedBox(height: 40),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => widget.controller.logout(),
+              style: TextButton.styleFrom(foregroundColor: AppPalette.rose),
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Logout and Sign Out'),
+            ),
           ),
-      ],
+          const SizedBox(height: 120),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserInfoHeader(BuildContext context) {
+    return AppPanel(
+      color: AppPalette.forest,
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white24,
+            child: Icon(Icons.person_rounded, color: Colors.white, size: 30),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.controller.currentEmail ?? 'Active User',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  'Cloud-synced profile active',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsageInfo(BuildContext context) {
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'How this is used',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Your profile data is used during the reasoning stage to match ingredients with health triggers. This allows the AI to provide personalized safety scores.',
+            style: TextStyle(color: AppPalette.muted, height: 1.5),
+          ),
+        ],
+      ),
     );
   }
 }
