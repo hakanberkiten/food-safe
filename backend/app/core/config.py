@@ -1,6 +1,11 @@
+import logging
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+ENV_FILE = BASE_DIR / ".env"
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -11,10 +16,7 @@ class Settings(BaseSettings):
     REASONING_FALLBACK_MODEL: str = "gemini-2.5-flash"
     GEMMA_VISION_MODEL: str = ""
     GEMMA_REASONING_MODEL: str = ""
-    DATABASE_URL: str = (
-        "postgresql://postgres.[USER]:[PASSWORD]"
-        "@aws-0-[REGION].pooler.supabase.com:6543/postgres"
-    )
+    DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'food_safe.db'}"
     SECRET_KEY: str = "changeme-in-production"
     KNOWLEDGE_BASE_PATH: str = "knowledge/ecodes.json"
     CHROMA_USE_CLOUD: bool = False
@@ -27,7 +29,14 @@ class Settings(BaseSettings):
     MARKET_API_BASE_URL: str = ""
 
     class Config:
-        env_file = Path(__file__).resolve().parents[2] / ".env"
+        env_file = ENV_FILE
         env_file_encoding = "utf-8"
+
+
+if not ENV_FILE.exists():
+    logger.warning(
+        "Environment file not found at %s. Falling back to default settings where applicable.",
+        ENV_FILE,
+    )
 
 settings = Settings()

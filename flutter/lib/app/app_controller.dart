@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -43,16 +44,18 @@ class AppController extends ChangeNotifier {
   static Future<AppController> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final sessionId = prefs.getString(_sessionIdKey) ?? _generateSessionId();
+    final backendUrl = _restoredBackendUrl(prefs.getString(_backendUrlKey));
     final controller = AppController._(
       prefs: prefs,
-      backendUrl: prefs.getString(_backendUrlKey) ?? 'http://10.0.2.2:8000',
+      backendUrl: backendUrl,
       sessionId: sessionId,
       accessToken: prefs.getString(_accessTokenKey),
       currentEmail: prefs.getString(_currentEmailKey),
+      healthMessage: 'Checking backend connection...',
     );
     await controller._persistSessionId();
-    await controller.refreshHealth();
-    await controller.refreshStats();
+    await prefs.setString(_backendUrlKey, backendUrl);
+    unawaited(controller.initialize());
     return controller;
   }
 
@@ -83,6 +86,11 @@ class AppController extends ChangeNotifier {
     sessionId: _sessionId,
     accessToken: _accessToken,
   );
+
+  Future<void> initialize() async {
+    await refreshHealth();
+    await refreshStats();
+  }
 
   Future<void> setBackendUrl(String value) async {
     final trimmed = value.trim();
@@ -198,5 +206,42 @@ class AppController extends ChangeNotifier {
     final random = Random.secure();
     final bytes = List<int>.generate(18, (_) => random.nextInt(256));
     return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+
+  static String _defaultBackendUrl() {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000';
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'http://10.0.2.2:8000';
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return 'http://127.0.0.1:8000';
+      case TargetPlatform.fuchsia:
+        return 'http://127.0.0.1:8000';
+    }
+  }
+
+  static String _restoredBackendUrl(String? persistedUrl) {
+    final defaultUrl = _defaultBackendUrl();
+    final trimmed = persistedUrl?.trim();
+
+    if (trimmed == null || trimmed.isEmpty) {
+      return defaultUrl;
+    }
+
+    final usesAndroidEmulatorLoopback = trimmed.contains('10.0.2.2');
+    final isAndroid =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+    if (usesAndroidEmulatorLoopback && !isAndroid) {
+      return defaultUrl;
+    }
+
+    return trimmed;
   }
 }

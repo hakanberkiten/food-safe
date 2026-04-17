@@ -1,347 +1,302 @@
-# Gemma 4 Food-Safe AI
+# Food-Safe
 
-AI destekli, kişiselleştirilmiş gıda toksikoloji ajanı. Bu proje, ürün etiket fotoğraflarını analiz eder, içindekiler listesini yapılandırılmış veriye dönüştürür, bilimsel kaynaklarla RAG üzerinden çapraz sorgular ve kullanıcının sağlık profiline göre risk raporu üretir.
+Food-Safe is an AI-assisted food label analysis project. The backend accepts a product label image, extracts ingredients from the label, retrieves toxicology context from reference documents, and produces a personalized risk summary based on a user profile.
 
-Bu repo, **The Gemma 4 Good Hackathon** için geliştirilen backend ve RAG altyapısını içerir.
+This repository currently contains:
 
-## Problem
+- a FastAPI backend in `backend/`
+- a Flutter frontend in `flutter/`
+- PDF reference documents used for RAG ingestion in `backend/knowledge/reference_docs/`
 
-Market ürünlerinin arka yüzündeki içerik listeleri çoğu kullanıcı için:
+## What This Project Does
 
-- zor okunur
-- teknik terimlerle doludur
-- sağlık durumuna göre yorumlanması zordur
-- güvenilir bilimsel kaynaklarla ilişkilendirilmez
+The backend follows a `Vision -> RAG -> Reasoning` pipeline:
 
-Food-Safe AI bu problemi üç adımda çözer:
+1. Vision reads the uploaded food label image and extracts structured ingredient data.
+2. RAG looks for toxicology context in ingested PDF reference documents stored in Chroma.
+3. Reasoning combines extracted ingredients, retrieved evidence, and user profile data into a risk report.
 
-1. Etiket fotoğrafını okur.
-2. İçerikleri bilimsel dökümanlarla eşleştirir.
-3. Kullanıcının sağlık profiline göre kişiselleştirilmiş risk analizi üretir.
+If no vector results are available, the backend falls back to a very small seed file at `backend/knowledge/ecodes.json`.
 
-## Çözüm Özeti
-
-Sistem, `Vision -> RAG -> Reasoning` akışıyla çalışır:
-
-```mermaid
-flowchart LR
-    A["Etiket Fotoğrafı"] --> B["Vision Stage<br/>JSON ingredient extraction"]
-    B --> C["RAG Stage<br/>Chroma + PDF toxicology retrieval"]
-    C --> D["Reasoning Stage<br/>Risk synthesis"]
-    E["Kullanıcı Profili"] --> D
-    D --> F["Risk Raporu"]
-    D --> G["Sağlıklı Alternatifler"]
-```
-
-## Öne Çıkan Özellikler
-
-- Multimodal etiket analizi
-- Yapılandırılmış ingredient extraction
-- Chroma destekli gerçek RAG akışı
-- FDA / WHO tarzı PDF kaynaklardan retrieval
-- Supabase PostgreSQL altyapısı
-- Gemma-first, Gemini-fallback model yönlendirmesi
-- Fallback kullanıldığında log ve response metadata takibi
-- Kullanıcı profiline göre kişiselleştirilmiş risk değerlendirmesi
-- High-risk durumda sağlıklı alternatif öneri akışı
-
-## Mimari
-
-### 1. Vision
-
-Etiket görseli Google GenAI üzerinden çalıştırılır ve düz metin yerine yapılandırılmış JSON elde edilir.
-
-Örnek hedef çıktı:
-
-```json
-{
-  "product_name": "Example Product",
-  "ingredients": ["E211", "maltodextrin", "aspartame"],
-  "claims": ["sugar free"],
-  "allergens": ["milk"],
-  "cross_contamination_warnings": ["may contain nuts"],
-  "detected_language": "tr",
-  "raw_text": "Tam OCR çıktısı"
-}
-```
-
-### 2. RAG
-
-PDF bilimsel dökümanları chunk’lanır ve Chroma koleksiyonuna yüklenir. Sorgu sırasında her ingredient için benzer toksikoloji parçaları getirilir.
-
-Şu anda iki katmanlı yapı var:
-
-- Birincil kaynak: Chroma Cloud / Chroma local collection
-- Fallback kaynak: `backend/knowledge/ecodes.json`
-
-### 3. Reasoning
-
-Reasoning aşaması şu girdileri birleştirir:
-
-- Vision çıktısı
-- RAG ile dönen toksikoloji kanıtları
-- Kullanıcı sağlık profili
-
-Sonuçta:
-
-- genel risk seviyesi
-- ingredient bazlı değerlendirme
-- bilimsel dayanaklar
-- önerilen sonraki adımlar
-- gerekirse alternatif ürün önerileri
-
-üretilir.
-
-## Model Stratejisi
-
-Sistem önce Gemma modelini dener. Eğer ilgili model senin Google AI Studio key’in için erişilebilir değilse otomatik olarak Gemini fallback devreye girer.
-
-Bu bilgi iki yerde görünür:
-
-- backend log’larında warning olarak
-- API response içindeki `execution_metadata` alanında
-
-Bu sayede ekip fallback olup olmadığını sessizce kaçırmaz.
-
-## Teknoloji Yığını
-
-- Backend: FastAPI
-- ORM: SQLAlchemy
-- Database: Supabase PostgreSQL
-- AI SDK: Google GenAI SDK
-- Vector DB: Chroma
-- Embedding / retrieval altyapısı: Chroma collection query
-- PDF parsing: `pypdf`
-- Auth: JWT
-- Deployment-ready config: `.env` + Pydantic Settings
-
-## Proje Yapısı
+## Repository Layout
 
 ```text
 food-safe/
 ├─ README.md
-├─ requirements.txt
-└─ backend/
-   ├─ .env.example
-   ├─ requirements.txt
-   ├─ ingest_reference_docs.py
-   ├─ app/
-   │  ├─ main.py
-   │  ├─ api/
-   │  │  ├─ analyze.py
-   │  │  ├─ auth.py
-   │  │  ├─ history.py
-   │  │  ├─ profile.py
-   │  │  └─ shared.py
-   │  ├─ core/
-   │  │  ├─ config.py
-   │  │  ├─ database.py
-   │  │  └─ security.py
-   │  ├─ models/
-   │  ├─ schemas/
-   │  │  └─ food_safe.py
-   │  ├─ services/
-   │  │  ├─ google_ai.py
-   │  │  ├─ vision.py
-   │  │  ├─ rag.py
-   │  │  ├─ reasoning.py
-   │  │  ├─ market.py
-   │  │  ├─ gemma_service.py
-   │  │  └─ rag_service.py
-   │  └─ workflows/
-   │     └─ agent_workflow.py
-   └─ knowledge/
-      ├─ ecodes.json
-      └─ reference_docs/
+├─ docker-compose.yml
+├─ backend/
+│  ├─ .env.example
+│  ├─ requirements.txt
+│  ├─ ingest_reference_docs.py
+│  ├─ app/
+│  │  ├─ main.py
+│  │  ├─ api/
+│  │  ├─ core/
+│  │  ├─ models/
+│  │  ├─ schemas/
+│  │  ├─ services/
+│  │  └─ workflows/
+│  └─ knowledge/
+│     ├─ ecodes.json
+│     └─ reference_docs/
+├─ flutter/
+└─ notebooks/
 ```
 
-## Kurulum
+## Quick Start
 
-### 1. Bağımlılıkları yükle
+If you only want to get the backend running locally, follow these steps.
 
-Proje kök dizininde:
+### 1. Create a virtual environment
+
+From the repository root:
+
+```bash
+cd /Users/ems/Desktop/food-safe/backend
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install backend dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Ortam değişkenlerini ayarla
-
-`backend/.env` dosyası oluştur. Hızlı başlangıç için:
+### 3. Create `backend/.env`
 
 ```bash
-cp backend/.env.example backend/.env
+cp .env.example .env
 ```
 
-Sonra `backend/.env` içinde en az şu alanları doldur:
+At minimum, review and update:
 
 ```env
 GEMINI_API_KEY=your_google_ai_studio_key
-
-VISION_MODEL=gemma-4-31b-it
-VISION_FALLBACK_MODEL=gemini-2.5-flash
-REASONING_MODEL=gemma-4-31b-it
-REASONING_FALLBACK_MODEL=gemini-2.5-flash
-
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.isjomprfajsyjdpqjwhk.supabase.co:5432/postgres
-SECRET_KEY=your_long_random_secret
-
-CHROMA_USE_CLOUD=true
-CHROMA_API_KEY=your_chroma_cloud_api_key
-CHROMA_TENANT=your_chroma_tenant_id
-CHROMA_DATABASE=Safe-Foods
-CHROMA_COLLECTION=food-safe-toxicology
-CHROMA_TOP_K=3
+SECRET_KEY=replace-with-a-long-random-secret
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@your-supabase-host:5432/postgres
+CHROMA_USE_CLOUD=false
 ```
 
-Notlar:
+Important notes:
 
-- `DATABASE_URL` içindeki şifre özel karakter içeriyorsa URL-encode edilmelidir.
-- `.env` dosyası commit edilmemelidir.
-- Ekipteki herkes aynı Supabase ve Chroma bilgilerini kullanmalıdır.
+- If `backend/.env` is missing, the app logs a warning and falls back to a local SQLite database at `backend/food_safe.db`.
+- That fallback is useful for local startup, but it is not the intended production database setup.
+- If your database password contains special characters, URL-encode it inside `DATABASE_URL`.
 
-### 3. Veritabanını başlat
+### 4. Optional but recommended: ingest the PDF knowledge base
+
+The repository already includes PDF files under `backend/knowledge/reference_docs/`, but they are not queried automatically just because they exist on disk. They must first be ingested into Chroma.
+
+Run:
 
 ```bash
-cd backend
-python3 -c "from app.core.database import init_db; init_db()"
+cd /Users/ems/Desktop/food-safe/backend
+./.venv/bin/python ingest_reference_docs.py --reset
 ```
 
-### 4. RAG index oluştur
+This command:
 
-PDF kaynaklarını `backend/knowledge/reference_docs/` içine koyduktan sonra:
+- reads all PDF files in `backend/knowledge/reference_docs/`
+- extracts text page by page
+- chunks the text
+- uploads the chunks into the configured Chroma collection
 
-```bash
-cd backend
-python3 ingest_reference_docs.py --reset
-```
+If you skip this step, RAG will rely much more heavily on `backend/knowledge/ecodes.json`, which is only a tiny fallback dataset.
 
-Bu komut:
-
-- PDF dosyalarını okur
-- sayfa bazlı metin çıkarır
-- chunk’lara böler
-- Chroma koleksiyonuna upload eder
-
-### 5. Backend’i çalıştır
+### 5. Start the backend
 
 ```bash
-cd backend
+cd /Users/ems/Desktop/food-safe/backend
+source .venv/bin/activate
 uvicorn app.main:app --reload
 ```
 
-API:
+Once the server is up:
 
-- `http://localhost:8000`
-- Swagger docs: `http://localhost:8000/docs`
+- API root: [http://localhost:8000](http://localhost:8000)
+- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-## API Akışı
+## Local Development Modes
 
-Ana analiz endpoint’i:
+### Option A: minimal local setup
+
+Use the SQLite fallback and skip Supabase while working on API behavior or UI integration.
+
+Recommended when:
+
+- you are new to the repo
+- you only need the server to boot
+- you want to test endpoints without team cloud credentials
+
+### Option B: full team-like setup
+
+Use:
+
+- a real `DATABASE_URL`
+- your shared or local Chroma configuration
+- a valid `GEMINI_API_KEY`
+- a fresh PDF ingestion run
+
+Recommended when:
+
+- you need realistic toxicology retrieval
+- you are testing end-to-end AI output quality
+- you want parity with the rest of the team
+
+## Environment Variables
+
+The main settings live in `backend/.env`. Start from `backend/.env.example`.
+
+Common variables:
+
+- `GEMINI_API_KEY`: required for Google GenAI calls
+- `VISION_MODEL`: preferred model for ingredient extraction
+- `VISION_FALLBACK_MODEL`: fallback if the preferred vision model is unavailable
+- `REASONING_MODEL`: preferred model for reasoning
+- `REASONING_FALLBACK_MODEL`: fallback if the preferred reasoning model is unavailable
+- `DATABASE_URL`: PostgreSQL connection string, or leave `.env` missing to use local SQLite fallback
+- `SECRET_KEY`: JWT signing secret
+- `CHROMA_USE_CLOUD`: `true` for Chroma Cloud, `false` for local persistent Chroma
+- `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`: required when using Chroma Cloud
+- `CHROMA_COLLECTION`: collection name for RAG chunks
+- `CHROMA_PERSIST_DIRECTORY`: local Chroma storage directory when cloud mode is disabled
+- `MARKET_API_BASE_URL`: optional external market API base URL
+
+## Backend API Overview
+
+Main routes currently mounted by the backend:
 
 - `POST /api/analyze/`
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+- `GET /api/profile/`
+- `POST /api/profile/`
+- `GET /api/history/scans`
+- `GET /api/history/saved-products`
+- `POST /api/history/save-product`
+- `GET /api/history/stats`
+- `GET /api/shared/{token}`
 
-Beklenen giriş:
+### Most important endpoint
 
-- ürün etiketi görseli
-- opsiyonel kullanıcı oturumu / profil bilgisi
+`POST /api/analyze/` accepts a food label image and returns:
 
-Örnek response yapısı:
+- extracted label information
+- risk summary
+- top risky ingredients
+- personalized considerations
+- execution metadata describing model selection and fallback behavior
 
-```json
-{
-  "scan_id": 1,
-  "share_token": "example-token",
-  "result": {
-    "extracted_label": {
-      "product_name": "Sample Product",
-      "ingredients": ["E250", "glucose syrup"],
-      "claims": ["sugar free"],
-      "allergens": [],
-      "cross_contamination_warnings": [],
-      "detected_language": "en",
-      "raw_text": "..."
-    },
-    "retrieved_evidence": [
-      {
-        "ingredient": "E250",
-        "normalized_name": "e250",
-        "summary": "Scientific chunk summary",
-        "risk_level": "high",
-        "profile_flags": [],
-        "evidence": ["..."],
-        "sources": [{"title": "WHO document", "organization": "WHO", "citation": "..."}]
-      }
-    ],
-    "risk_report": {
-      "overall_risk": "high",
-      "status": "HIGH_RISK",
-      "summary": "High-risk outcome triggered by E250.",
-      "personalized_considerations": [],
-      "ingredient_assessments": [],
-      "safer_alternatives": [],
-      "scientific_basis": [],
-      "next_steps": []
-    },
-    "execution_metadata": [
-      {
-        "stage": "vision",
-        "provider": "google-genai",
-        "preferred_model": "gemma-4-31b-it",
-        "actual_model": "gemini-2.5-flash",
-        "fallback_model": "gemini-2.5-flash",
-        "fallback_used": true,
-        "success": true,
-        "notes": ["Gemini fallback path activated."]
-      }
-    ]
-  }
-}
+Accepted image types:
+
+- `image/jpeg`
+- `image/png`
+- `image/webp`
+
+## How RAG Works Here
+
+There are two knowledge layers:
+
+1. Primary layer: Chroma collection populated from PDF files by `backend/ingest_reference_docs.py`
+2. Fallback layer: `backend/knowledge/ecodes.json`
+
+This matters because new contributors often assume that placing PDFs in `reference_docs/` is enough. It is not. The PDFs must be ingested before the app can retrieve from them.
+
+## Common First-Day Pitfalls
+
+### The app starts, but retrieval feels weak
+
+Usually means the PDF ingestion step was skipped and the system is falling back to `ecodes.json`.
+
+### The app crashes on database connection
+
+Check `backend/.env` first. If the file exists but contains an invalid remote `DATABASE_URL`, startup will fail. If the file is missing entirely, the app now logs a warning and uses local SQLite instead.
+
+### The AI stages are using fallback models
+
+Look at:
+
+- backend logs
+- `execution_metadata` in API responses
+
+This usually means the preferred Gemma model is unavailable for the configured key and the code has switched to the configured Gemini fallback.
+
+### PDF files exist, but nothing is retrieved from them
+
+Run:
+
+```bash
+cd /Users/ems/Desktop/food-safe/backend
+./.venv/bin/python ingest_reference_docs.py --reset
 ```
 
-## Ekip İçin Operasyon Notları
+## Docker
 
-- `backend/.env` her geliştiricide lokal tutulmalı
-- Supabase ve Chroma erişimleri ekip içinde senkron olmalı
-- PDF kaynakları güncellendiğinde `ingest_reference_docs.py --reset` tekrar çalıştırılmalı
-- Fallback tetiklenirse önce log’lara ve `execution_metadata` alanına bakılmalı
+The repository includes a `docker-compose.yml` with services for:
 
-## Mevcut Durum
+- `backend`
+- `frontend`
 
-Tamamlananlar:
+Current compose behavior expects `backend/.env` to exist because the backend service mounts it with `env_file`.
 
-- Modüler backend mimarisi
-- Supabase PostgreSQL bağlantısı
-- Google GenAI entegrasyonu
-- Gemma-first / Gemini-fallback akışı
-- Chroma Cloud konfigürasyonu
-- PDF ingestion scripti
-- Fallback knowledge base
+Start with:
 
-Geliştirilmeye açık alanlar:
+```bash
+docker compose up --build
+```
 
-- daha güçlü toxicology classification mantığı
-- daha iyi ingredient normalization
-- production-grade observability
-- frontend / mobile istemci entegrasyonu
-- gerçek market API bağlantısı
+Backend port:
 
-## Güvenlik Notu
+- `8000`
 
-Bu repoda bulunan gerçek API anahtarları, DB şifreleri ve cloud credential’lar paylaşılmamalı. Eğer bir secret yanlışlıkla paylaşıldıysa:
+Frontend port:
 
-1. İlgili key’i hemen rotate et
-2. `.env` dışındaki dosyalarda secret kalmadığını kontrol et
-3. Gerekirse yeni credential üret
+- `3000`
 
-## Kısa Demo Akışı
+## Frontend Notes
 
-1. Kullanıcı ürün etiketi yükler
-2. Sistem ingredient JSON çıkarır
-3. Chroma’dan bilimsel kanıtları getirir
-4. Profil bazlı risk raporu üretir
-5. Yüksek risk varsa alternatif önerir
+The Flutter app lives in `flutter/`. Its local README is still the default Flutter template, so the backend README should be treated as the primary source of truth for now.
 
-## Lisans
+If you are working on the frontend, start by getting the backend running first.
 
-Hackathon prototipi. Lisans kararı ekip tarafından netleştirilebilir.
+## Suggested Onboarding Flow
+
+For a new teammate, the safest sequence is:
+
+1. Create and activate `backend/.venv`.
+2. Install `backend/requirements.txt`.
+3. Copy `backend/.env.example` to `backend/.env`, or intentionally rely on the SQLite fallback for the first boot.
+4. Start the backend and confirm `/docs` loads.
+5. Run PDF ingestion.
+6. Test `POST /api/analyze/` with a sample label image.
+7. Only then move on to Supabase, Chroma Cloud, or frontend integration.
+
+## Security
+
+- Do not commit real secrets into the repository.
+- Keep `backend/.env` local.
+- Rotate any credential immediately if it was accidentally exposed.
+
+## Current Status
+
+What is already in place:
+
+- FastAPI backend
+- SQLAlchemy models and auth flows
+- image analysis workflow
+- PDF ingestion script
+- Chroma-backed retrieval path
+- fallback seed knowledge base
+- Flutter client scaffold
+
+What still needs polish:
+
+- stronger seed knowledge coverage
+- more robust ingredient normalization
+- clearer frontend setup documentation
+- more production-grade observability and operations docs
+
+## License
+
+No explicit license is defined yet in this repository.
