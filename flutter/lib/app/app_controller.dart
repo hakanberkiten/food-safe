@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -37,19 +38,24 @@ class AppController extends ChangeNotifier {
   String? _healthMessage;
   bool _backendReachable;
   AnalyzeResponse? _lastAnalysis;
+  int _totalScans = 0;
+  int _safeProducts = 0;
 
   static Future<AppController> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final sessionId = prefs.getString(_sessionIdKey) ?? _generateSessionId();
+    final backendUrl = _restoredBackendUrl(prefs.getString(_backendUrlKey));
     final controller = AppController._(
       prefs: prefs,
-      backendUrl: prefs.getString(_backendUrlKey) ?? 'http://127.0.0.1:8000',
+      backendUrl: backendUrl,
       sessionId: sessionId,
       accessToken: prefs.getString(_accessTokenKey),
       currentEmail: prefs.getString(_currentEmailKey),
+      healthMessage: 'Checking backend connection...',
     );
     await controller._persistSessionId();
-    await controller.refreshHealth();
+    await prefs.setString(_backendUrlKey, backendUrl);
+    unawaited(controller.initialize());
     return controller;
   }
 
@@ -72,12 +78,19 @@ class AppController extends ChangeNotifier {
   bool get backendReachable => _backendReachable;
   bool get isAuthenticated => _accessToken != null && _accessToken!.isNotEmpty;
   AnalyzeResponse? get lastAnalysis => _lastAnalysis;
+  int get totalScans => _totalScans;
+  int get safeProducts => _safeProducts;
 
   ApiClient get api => ApiClient(
     baseUrl: _backendUrl,
     sessionId: _sessionId,
     accessToken: _accessToken,
   );
+
+  Future<void> initialize() async {
+    await refreshHealth();
+    await refreshStats();
+  }
 
   Future<void> setBackendUrl(String value) async {
     final trimmed = value.trim();
@@ -122,6 +135,8 @@ class AppController extends ChangeNotifier {
   Future<void> logout() async {
     _accessToken = null;
     _currentEmail = null;
+    _totalScans = 0;
+    _safeProducts = 0;
     await _prefs?.remove(_accessTokenKey);
     await _prefs?.remove(_currentEmailKey);
     notifyListeners();
@@ -161,6 +176,16 @@ class AppController extends ChangeNotifier {
     return api.getSharedScan(token);
   }
 
+  Future<void> refreshStats() async {
+    if (!isAuthenticated) return;
+    try {
+      final stats = await api.getHistoryStats();
+      _totalScans = stats['total_scans'] ?? 0;
+      _safeProducts = stats['safe_products'] ?? 0;
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<void> _applyAuthState({
     required AuthToken token,
     required String email,
@@ -169,6 +194,7 @@ class AppController extends ChangeNotifier {
     _currentEmail = email;
     await _prefs?.setString(_accessTokenKey, token.accessToken);
     await _prefs?.setString(_currentEmailKey, email);
+    await refreshStats();
     notifyListeners();
   }
 
@@ -180,5 +206,42 @@ class AppController extends ChangeNotifier {
     final random = Random.secure();
     final bytes = List<int>.generate(18, (_) => random.nextInt(256));
     return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+
+  static String _defaultBackendUrl() {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000';
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'http://10.0.2.2:8000';
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return 'http://127.0.0.1:8000';
+      case TargetPlatform.fuchsia:
+        return 'http://127.0.0.1:8000';
+    }
+  }
+
+  static String _restoredBackendUrl(String? persistedUrl) {
+    final defaultUrl = _defaultBackendUrl();
+    final trimmed = persistedUrl?.trim();
+
+    if (trimmed == null || trimmed.isEmpty) {
+      return defaultUrl;
+    }
+
+    final usesAndroidEmulatorLoopback = trimmed.contains('10.0.2.2');
+    final isAndroid =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+    if (usesAndroidEmulatorLoopback && !isAndroid) {
+      return defaultUrl;
+    }
+
+    return trimmed;
   }
 }

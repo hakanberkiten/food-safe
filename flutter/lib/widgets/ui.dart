@@ -4,15 +4,17 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/app_models.dart';
 
 class AppPalette {
-  static const canvas = Color(0xFFF6F1E8);
-  static const panel = Color(0xFFFDF9F1);
-  static const ink = Color(0xFF17342D);
-  static const muted = Color(0xFF61756D);
-  static const forest = Color(0xFF17342D);
-  static const mint = Color(0xFF2A8A75);
-  static const amber = Color(0xFFB85C38);
-  static const rose = Color(0xFFB5423F);
-  static const sand = Color(0xFFE7D7B8);
+  static const canvas = Color(0xFFF9F7F2);
+  static const panel = Color(0xFFFFFFFF);
+  static const ink = Color(0xFF102A23);
+  static const muted = Color(0xFF5D716A);
+  static const forest = Color(0xFF144D3B);
+  static const mint = Color(0xFF2ECC71);
+  static const emerald = Color(0xFF27AE60);
+  static const amber = Color(0xFFF39C12);
+  static const rose = Color(0xFFE74C3C);
+  static const sand = Color(0xFFF0E6D2);
+  static const gold = Color(0xFFD4AF37);
 }
 
 BoxDecoration panelDecoration({Color color = AppPalette.panel}) {
@@ -94,24 +96,47 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final normalized = label.toUpperCase();
     Color color;
-    if (normalized.contains('HIGH')) {
+    IconData icon;
+    String cleanLabel = label;
+
+    if (normalized.contains('HIGH') || normalized.contains('DANGEROUS') || normalized.contains('RED')) {
       color = AppPalette.rose;
+      icon = Icons.error_rounded;
+      cleanLabel = 'DANGEROUS';
     } else if (normalized.contains('CAUTION') ||
-        normalized.contains('MODERATE')) {
+        normalized.contains('MODERATE') ||
+        normalized.contains('WARNING')) {
       color = AppPalette.amber;
+      icon = Icons.warning_amber_rounded;
+      cleanLabel = 'CAUTION';
     } else {
-      color = AppPalette.mint;
+      color = AppPalette.emerald;
+      icon = Icons.check_circle_rounded;
+      cleanLabel = 'SAFE';
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontWeight: FontWeight.w800),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            cleanLabel,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -192,72 +217,132 @@ class AnalysisSummaryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          analysis.productName?.trim().isNotEmpty == true
+                              ? analysis.productName!
+                              : 'Unnamed Product',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: AppPalette.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            TagPill(label: '${analysis.ingredientCount} Ingredients'),
+                            TagPill(label: analysis.detectedLanguage.toUpperCase()),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  StatusBadge(label: analysis.status),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppPalette.sand.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppPalette.sand),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, color: AppPalette.muted, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        analysis.summary,
+                        style: const TextStyle(
+                          color: AppPalette.ink,
+                          fontSize: 15,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _RiskSection(items: analysis.topRiskIngredients),
+        const SizedBox(height: 20),
+        _ListSection(
+          title: 'Allergens & Warnings',
+          values: analysis.allergens,
+          emptyLabel: 'No specific allergen warnings detected.',
+          icon: Icons.warning_amber_rounded,
+          iconColor: AppPalette.amber,
+        ),
+        const SizedBox(height: 20),
+        _AlternativesSection(items: analysis.saferAlternatives),
+        const SizedBox(height: 20),
+        _ScientificSection(values: analysis.scientificBasis),
+        if (footer != null) ...[
+          const SizedBox(height: 24),
+          footer!,
+        ],
+      ],
+    );
+  }
+}
+
+class _ScientificSection extends StatelessWidget {
+  const _ScientificSection({required this.values});
+  final List<String> values;
+
+  @override
+  Widget build(BuildContext context) {
     return AppPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
+              const Icon(Icons.auto_stories_rounded, color: AppPalette.gold, size: 20),
+              const SizedBox(width: 10),
               Text(
-                analysis.productName?.trim().isNotEmpty == true
-                    ? analysis.productName!
-                    : 'Unnamed product scan',
-                style: Theme.of(context).textTheme.titleLarge,
+                'Scientific Basis (RAG)',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
-              StatusBadge(label: analysis.status),
-              TagPill(label: '${analysis.ingredientCount} ingredients'),
-              TagPill(label: analysis.detectedLanguage.toUpperCase()),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            analysis.summary,
-            style: const TextStyle(
-              color: AppPalette.ink,
-              fontSize: 16,
-              height: 1.6,
+          const SizedBox(height: 12),
+          if (values.isEmpty)
+            const Text('No reference documents found.', style: TextStyle(color: AppPalette.muted))
+          else
+            Column(
+              children: values.map((v) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Expanded(child: Text(v, style: const TextStyle(fontSize: 13, color: AppPalette.muted))),
+                  ],
+                ),
+              )).toList(),
             ),
-          ),
-          const SizedBox(height: 18),
-          _ListSection(
-            title: 'Ingredients preview',
-            values: analysis.ingredientsPreview,
-            emptyLabel: 'No ingredients extracted.',
-          ),
-          const SizedBox(height: 18),
-          _ListSection(
-            title: 'Allergens',
-            values: analysis.allergens,
-            emptyLabel: 'No allergen note present.',
-          ),
-          const SizedBox(height: 18),
-          _RiskSection(items: analysis.topRiskIngredients),
-          const SizedBox(height: 18),
-          _AlternativesSection(items: analysis.saferAlternatives),
-          const SizedBox(height: 18),
-          _ListSection(
-            title: 'Scientific basis',
-            values: analysis.scientificBasis,
-            emptyLabel: 'No citations returned.',
-          ),
-          const SizedBox(height: 18),
-          _ExecutionSection(traces: analysis.executionMetadata),
-          if (scanId != null || shareToken != null || footer != null) ...[
-            const SizedBox(height: 20),
-            if (scanId != null || shareToken != null)
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  if (scanId != null) TagPill(label: 'Scan #$scanId'),
-                  if (shareToken != null) TagPill(label: 'Share: $shareToken'),
-                ],
-              ),
-            if (footer != null) ...[const SizedBox(height: 16), footer!],
-          ],
         ],
       ),
     );
@@ -269,28 +354,39 @@ class _ListSection extends StatelessWidget {
     required this.title,
     required this.values,
     required this.emptyLabel,
+    this.icon,
+    this.iconColor,
   });
 
   final String title;
   final List<String> values;
   final String emptyLabel;
+  final IconData? icon;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 10),
-        if (values.isEmpty)
-          Text(emptyLabel, style: const TextStyle(color: AppPalette.muted))
-        else
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: values.map((value) => TagPill(label: value)).toList(),
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[Icon(icon, color: iconColor, size: 20), const SizedBox(width: 10)],
+              Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            ],
           ),
-      ],
+          const SizedBox(height: 12),
+          if (values.isEmpty)
+            Text(emptyLabel, style: const TextStyle(color: AppPalette.muted))
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: values.map((value) => TagPill(label: value)).toList(),
+            ),
+        ],
+      ),
     );
   }
 }

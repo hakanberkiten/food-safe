@@ -9,6 +9,8 @@ import '../models/app_models.dart';
 class ApiClient {
   ApiClient({required this.baseUrl, required this.sessionId, this.accessToken});
 
+  static const Duration _requestTimeout = Duration(seconds: 5);
+
   final String baseUrl;
   final String sessionId;
   final String? accessToken;
@@ -43,7 +45,7 @@ class ApiClient {
   }
 
   Future<String> ping() async {
-    final response = await http.get(_uri('/'));
+    final response = await http.get(_uri('/')).timeout(_requestTimeout);
     final data = _decodeJsonObject(response);
     return data['message']?.toString() ?? 'Backend reachable';
   }
@@ -138,6 +140,18 @@ class ApiClient {
       headers: _headers(),
     );
     return _decodeJsonList(response).map(ScanHistoryItem.fromJson).toList();
+  }
+
+  Future<Map<String, int>> getHistoryStats() async {
+    final response = await http.get(
+      _uri('/api/history/stats'),
+      headers: _headers(),
+    );
+    final data = _decodeJsonObject(response);
+    return {
+      'total_scans': data['total_scans'] as int,
+      'safe_products': data['safe_products'] as int,
+    };
   }
 
   Future<List<SavedProductItem>> getSavedProducts() async {
