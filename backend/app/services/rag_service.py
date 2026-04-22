@@ -3,7 +3,7 @@ from app.services.rag import ToxicologyRAGService
 rag_service = ToxicologyRAGService()
 
 
-def search_ecodes(ingredients: list[str]) -> list[dict]:
+def search_toxicology_evidence(ingredients: list[str]) -> list[dict]:
     return [finding.model_dump() for finding in rag_service.retrieve(ingredients)]
 
 

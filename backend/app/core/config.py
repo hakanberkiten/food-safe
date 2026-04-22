@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     GEMMA_REASONING_MODEL: str = ""
     DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'food_safe.db'}"
     SECRET_KEY: str = "changeme-in-production"
-    KNOWLEDGE_BASE_PATH: str = "knowledge/ecodes.json"
     CHROMA_USE_CLOUD: bool = False
     CHROMA_API_KEY: str = ""
     CHROMA_TENANT: str = ""

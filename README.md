@@ -16,7 +16,7 @@ The backend follows a `Vision -> RAG -> Reasoning` pipeline:
 2. RAG looks for toxicology context in ingested PDF reference documents stored in Chroma.
 3. Reasoning combines extracted ingredients, retrieved evidence, and user profile data into a risk report.
 
-If no vector results are available, the backend falls back to a very small seed file at `backend/knowledge/ecodes.json`.
+The retrieval stage uses vector search only. If no vector chunks are available, the backend returns unknown evidence instead of falling back to a static seed file.
 
 ## Repository Layout
 
@@ -37,7 +37,6 @@ food-safe/
 │  │  ├─ services/
 │  │  └─ workflows/
 │  └─ knowledge/
-│     ├─ ecodes.json
 │     └─ reference_docs/
 ├─ flutter/
 └─ notebooks/
@@ -84,7 +83,7 @@ Important notes:
 - That fallback is useful for local startup, but it is not the intended production database setup.
 - If your database password contains special characters, URL-encode it inside `DATABASE_URL`.
 
-### 4. Optional but recommended: ingest the PDF knowledge base
+### 4. Ingest the PDF knowledge base
 
 The repository already includes PDF files under `backend/knowledge/reference_docs/`, but they are not queried automatically just because they exist on disk. They must first be ingested into Chroma.
 
@@ -102,7 +101,7 @@ This command:
 - chunks the text
 - uploads the chunks into the configured Chroma collection
 
-If you skip this step, RAG will rely much more heavily on `backend/knowledge/ecodes.json`, which is only a tiny fallback dataset.
+If you skip this step, vector RAG will have no document chunks to retrieve.
 
 ### 5. Start the backend
 
@@ -196,10 +195,9 @@ Accepted image types:
 
 ## How RAG Works Here
 
-There are two knowledge layers:
+There is one retrieval layer:
 
-1. Primary layer: Chroma collection populated from PDF files by `backend/ingest_reference_docs.py`
-2. Fallback layer: `backend/knowledge/ecodes.json`
+1. Chroma vector collection populated from PDF files by `backend/ingest_reference_docs.py`
 
 This matters because new contributors often assume that placing PDFs in `reference_docs/` is enough. It is not. The PDFs must be ingested before the app can retrieve from them.
 
@@ -207,7 +205,7 @@ This matters because new contributors often assume that placing PDFs in `referen
 
 ### The app starts, but retrieval feels weak
 
-Usually means the PDF ingestion step was skipped and the system is falling back to `ecodes.json`.
+Usually means the PDF ingestion step was skipped or the local Chroma collection is empty.
 
 ### The app crashes on database connection
 
@@ -259,6 +257,18 @@ Frontend port:
 The Flutter app lives in `flutter/`. Its local README is still the default Flutter template, so the backend README should be treated as the primary source of truth for now.
 
 If you are working on the frontend, start by getting the backend running first.
+Set the Flutter API URL in `flutter/.env`:
+
+```env
+BACKEND_URL=http://127.0.0.1:8000
+```
+
+Run the app with:
+
+```bash
+cd /Users/ems/Desktop/food-safe/flutter
+flutter run -d chrome --dart-define-from-file=.env
+```
 
 ## Suggested Onboarding Flow
 
@@ -287,12 +297,10 @@ What is already in place:
 - image analysis workflow
 - PDF ingestion script
 - Chroma-backed retrieval path
-- fallback seed knowledge base
 - Flutter client scaffold
 
 What still needs polish:
 
-- stronger seed knowledge coverage
 - more robust ingredient normalization
 - clearer frontend setup documentation
 - more production-grade observability and operations docs

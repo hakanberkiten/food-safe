@@ -16,8 +16,6 @@ class AnalyzePage extends StatefulWidget {
 }
 
 class _AnalyzePageState extends State<AnalyzePage> {
-  late final TextEditingController _backendUrlController;
-
   PlatformFile? _selectedFile;
   Uint8List? _selectedFileBytes;
   bool _isLoading = false;
@@ -29,14 +27,10 @@ class _AnalyzePageState extends State<AnalyzePage> {
   @override
   void initState() {
     super.initState();
-    _backendUrlController = TextEditingController(
-      text: widget.controller.backendUrl,
-    );
   }
 
   @override
   void dispose() {
-    _backendUrlController.dispose();
     super.dispose();
   }
 
@@ -82,7 +76,6 @@ class _AnalyzePageState extends State<AnalyzePage> {
     });
 
     try {
-      await widget.controller.setBackendUrl(_backendUrlController.text);
       final result = await widget.controller.analyze(
         bytes: _selectedFileBytes!,
         filename: _selectedFile!.name,
@@ -98,25 +91,6 @@ class _AnalyzePageState extends State<AnalyzePage> {
     } finally {
       setState(() {
         _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _checkBackend() async {
-    setState(() {
-      _errorMessage = null;
-      _statusMessage = null;
-    });
-
-    try {
-      await widget.controller.setBackendUrl(_backendUrlController.text);
-      await widget.controller.refreshHealth();
-      setState(() {
-        _statusMessage = widget.controller.healthMessage;
-      });
-    } catch (error) {
-      setState(() {
-        _errorMessage = error.toString();
       });
     }
   }
@@ -171,8 +145,6 @@ class _AnalyzePageState extends State<AnalyzePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildBackendCard(),
-          const SizedBox(height: 32),
           _buildStepHeader(
             step: '1',
             title: 'Upload Label',
@@ -254,98 +226,6 @@ class _AnalyzePageState extends State<AnalyzePage> {
           const SizedBox(height: 120),
         ],
       ),
-    );
-  }
-
-  Widget _buildBackendCard() {
-    return ListenableBuilder(
-      listenable: widget.controller,
-      builder: (context, _) {
-        final reachable = widget.controller.backendReachable;
-        final statusText =
-            widget.controller.healthMessage ??
-            'Set your backend URL and test the connection.';
-
-        return AppPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    reachable
-                        ? Icons.cloud_done_rounded
-                        : Icons.cloud_off_rounded,
-                    color: reachable ? AppPalette.emerald : AppPalette.amber,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      reachable
-                          ? 'Backend Connected'
-                          : 'Backend Connection Needed',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppPalette.ink,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                statusText,
-                style: const TextStyle(color: AppPalette.muted, height: 1.4),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _backendUrlController,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: 'Backend URL',
-                  hintText: 'http://127.0.0.1:8000',
-                  filled: true,
-                  fillColor: const Color(0xFFF3EEE5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  FilledButton.icon(
-                    onPressed: _checkBackend,
-                    icon: const Icon(Icons.wifi_find_rounded),
-                    label: const Text('Test Connection'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      _backendUrlController.text = widget.controller.backendUrl;
-                      _checkBackend();
-                    },
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Use Current URL'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Android emulator: http://10.0.2.2:8000 | iOS simulator/macOS: http://127.0.0.1:8000 | Physical phone: http://YOUR_LOCAL_IP:8000',
-                style: TextStyle(
-                  color: AppPalette.muted,
-                  fontSize: 12,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

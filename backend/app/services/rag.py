@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
-from typing import Any
 
 try:
     import chromadb
@@ -19,14 +17,9 @@ logger = logging.getLogger(__name__)
 class ToxicologyRAGService:
     def __init__(
         self,
-        knowledge_base_path: str | Path | None = None,
         persist_directory: str | Path | None = None,
     ) -> None:
         backend_root = Path(__file__).resolve().parents[2]
-        self.knowledge_base_path = self._resolve_path(
-            backend_root=backend_root,
-            raw_path=knowledge_base_path or settings.KNOWLEDGE_BASE_PATH,
-        )
         self.persist_directory = self._resolve_path(
             backend_root=backend_root,
             raw_path=persist_directory or settings.CHROMA_PERSIST_DIRECTORY,
@@ -42,12 +35,12 @@ class ToxicologyRAGService:
             return []
 
         logger.info(
-            "RAG retrieve started. ingredients=%s collection=%s use_cloud=%s",
+            "Vector RAG retrieve started. ingredients=%s collection=%s use_cloud=%s persist_directory=%s",
             len(ingredients),
             self.collection_name,
             self.use_cloud,
+            self.persist_directory,
         )
-        knowledge = self._load_seed_knowledge()
         collection = self._get_collection()
 
         findings: list[ToxicologyFinding] = []
@@ -57,20 +50,14 @@ class ToxicologyRAGService:
                 findings.append(vector_finding)
                 continue
 
-            record = self._match_ingredient(ingredient, knowledge)
-            if record:
-                findings.append(self._build_seed_finding(ingredient, record))
-                continue
-
             findings.append(
                 ToxicologyFinding(
                     ingredient=ingredient,
                     normalized_name=ingredient.lower().strip(),
-                    summary="No curated toxicology record matched this ingredient yet.",
+                    summary="No vector toxicology evidence matched this ingredient yet.",
                     risk_level="unknown",
                     evidence=[
-                        "Chroma query returned no matching reference chunks.",
-                        "Fallback knowledge base also had no direct match for this ingredient.",
+                        "Vector RAG returned no matching reference chunks for this ingredient.",
                     ],
                     sources=[],
                 )
@@ -78,58 +65,6 @@ class ToxicologyRAGService:
 
         logger.info("RAG retrieve completed. findings=%s", len(findings))
         return findings
-
-    def _load_seed_knowledge(self) -> list[dict[str, Any]]:
-        if not self.knowledge_base_path.exists():
-            return []
-
-        with self.knowledge_base_path.open("r", encoding="utf-8") as file:
-            return json.load(file)
-
-    def _match_ingredient(
-        self, ingredient: str, knowledge: list[dict[str, Any]]
-    ) -> dict[str, Any] | None:
-        normalized_ingredient = ingredient.lower().strip()
-        for record in knowledge:
-            code = str(record.get("code", "")).lower()
-            name = str(record.get("name", "")).lower()
-            if code and code in normalized_ingredient:
-                return record
-            if name and name in normalized_ingredient:
-                return record
-        return None
-
-    def _build_seed_finding(self, ingredient: str, record: dict[str, Any]) -> ToxicologyFinding:
-        source_name = record.get("source", "Scientific reference")
-        description = record.get("description", "No description provided.")
-        risks = record.get("risks", [])
-
-        evidence = [description]
-        evidence.extend(f"Potential risk: {risk}" for risk in risks)
-
-        return ToxicologyFinding(
-            ingredient=ingredient,
-            normalized_name=str(record.get("name", ingredient)).lower(),
-            summary=description,
-            risk_level=self._infer_risk_level(risks),
-            evidence=evidence,
-            sources=[
-                ScientificSource(
-                    title=source_name,
-                    organization=self._infer_organization(source_name),
-                    citation=description,
-                )
-            ],
-        )
-
-    def _infer_risk_level(self, risks: list[str]) -> str:
-        if not risks:
-            return "low"
-        if len(risks) >= 3:
-            return "high"
-        if len(risks) == 2:
-            return "moderate"
-        return "low"
 
     def _infer_organization(self, source_name: str) -> str:
         lowered = source_name.lower()
@@ -140,6 +75,9 @@ class ToxicologyRAGService:
         return "Scientific literature"
 
     def _get_collection(self):
+        if chromadb is None:
+            logger.warning("chromadb package is not installed; vector RAG is unavailable.")
+            return None
         if self._collection is not None:
             return self._collection
 
@@ -158,7 +96,7 @@ class ToxicologyRAGService:
             return self._collection
         except Exception as error:
             logger.warning(
-                "Chroma collection initialization failed; RAG will use fallback knowledge only.",
+                "Chroma collection initialization failed; vector RAG is unavailable.",
                 exc_info=error,
             )
             self._collection = False
@@ -177,7 +115,7 @@ class ToxicologyRAGService:
             logger.info("RAG query completed for ingredient=%s", ingredient)
         except Exception as error:
             logger.warning(
-                "Chroma query failed for ingredient '%s'; using fallback knowledge.",
+                "Chroma query failed for ingredient '%s'.",
                 ingredient,
                 exc_info=error,
             )

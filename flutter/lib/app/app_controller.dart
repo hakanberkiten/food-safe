@@ -24,7 +24,6 @@ class AppController extends ChangeNotifier {
        _healthMessage = healthMessage,
        _backendReachable = backendReachable;
 
-  static const _backendUrlKey = 'backend_url';
   static const _sessionIdKey = 'session_id';
   static const _accessTokenKey = 'access_token';
   static const _currentEmailKey = 'current_email';
@@ -44,7 +43,7 @@ class AppController extends ChangeNotifier {
   static Future<AppController> bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final sessionId = prefs.getString(_sessionIdKey) ?? _generateSessionId();
-    final backendUrl = _restoredBackendUrl(prefs.getString(_backendUrlKey));
+    final backendUrl = _configuredBackendUrl();
     final controller = AppController._(
       prefs: prefs,
       backendUrl: backendUrl,
@@ -54,7 +53,6 @@ class AppController extends ChangeNotifier {
       healthMessage: 'Checking backend connection...',
     );
     await controller._persistSessionId();
-    await prefs.setString(_backendUrlKey, backendUrl);
     unawaited(controller.initialize());
     return controller;
   }
@@ -90,17 +88,6 @@ class AppController extends ChangeNotifier {
   Future<void> initialize() async {
     await refreshHealth();
     await refreshStats();
-  }
-
-  Future<void> setBackendUrl(String value) async {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed == _backendUrl) {
-      return;
-    }
-    _backendUrl = trimmed;
-    await _prefs?.setString(_backendUrlKey, _backendUrl);
-    notifyListeners();
-    await refreshHealth();
   }
 
   Future<void> refreshHealth() async {
@@ -226,22 +213,9 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  static String _restoredBackendUrl(String? persistedUrl) {
-    final defaultUrl = _defaultBackendUrl();
-    final trimmed = persistedUrl?.trim();
-
-    if (trimmed == null || trimmed.isEmpty) {
-      return defaultUrl;
-    }
-
-    final usesAndroidEmulatorLoopback = trimmed.contains('10.0.2.2');
-    final isAndroid =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-
-    if (usesAndroidEmulatorLoopback && !isAndroid) {
-      return defaultUrl;
-    }
-
-    return trimmed;
+  static String _configuredBackendUrl() {
+    const configured = String.fromEnvironment('BACKEND_URL');
+    final trimmed = configured.trim();
+    return trimmed.isEmpty ? _defaultBackendUrl() : trimmed;
   }
 }

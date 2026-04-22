@@ -42,7 +42,6 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      await widget.controller.setBackendUrl(widget.controller.backendUrl);
       if (_isLoginMode) {
         await widget.controller.login(
           email: _loginEmailController.text.trim(),
@@ -169,7 +168,9 @@ class _AuthPageState extends State<AuthPage> {
                   onPressed: _isSubmitting ? null : _submit,
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   icon: Icon(
                     _isLoginMode
@@ -182,7 +183,10 @@ class _AuthPageState extends State<AuthPage> {
                         : _isLoginMode
                         ? 'Sign In'
                         : 'Create Account',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 if (_statusMessage != null) ...[
