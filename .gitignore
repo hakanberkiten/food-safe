@@ -40,3 +40,8 @@ Thumbs.db
 
 # Docker
 *.env.local
+
+# Submission docs (repo-dışı)
+KAGGLE_WRITEUP.md
+TECHNICAL_REPORT.md
+TECHNICAL_REPORT.pdf

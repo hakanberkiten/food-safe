@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ENV_FILE
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 if not ENV_FILE.exists():
