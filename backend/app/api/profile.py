@@ -3,7 +3,7 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.user import UserProfile, User
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user_optional
 from pydantic import BaseModel
 from typing import List
 
@@ -19,7 +19,7 @@ class ProfileUpdate(BaseModel):
 async def get_profile(
     session_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     if current_user:
         profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
@@ -37,7 +37,7 @@ async def get_profile(
 async def update_profile(
     profile_in: ProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     if current_user:
         profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()

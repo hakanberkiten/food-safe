@@ -10,5 +10,9 @@ services:
       - ./backend/.env
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-volumes:
-  chroma_data:
+  frontend:
+    build: ./flutter
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend

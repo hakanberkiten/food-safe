@@ -1,3 +1,14 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+food_safe.db
+*.sqlite3
+knowledge/chroma/
+.idea/
+.vscode/
 knowledge/en.openfoodfacts.org.products.csv
 knowledge/Open Food Facts Products.csv
 chroma_db/

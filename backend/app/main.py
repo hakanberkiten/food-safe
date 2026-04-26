@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import profile, analyze, auth, history, shared
-from app.core.database import engine, Base
-from app.models import user, scan, saved_product # Ensure models are loaded for DDL
+from app.core.database import init_db
 
-# Create tables
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="Food-Safe API", version="1.0.0")
+app = FastAPI(
+    title="Gemma 4 Food-Safe AI API",
+    version="2.0.0",
+    description="Vision-to-Query workflow for multimodal ingredient extraction, toxicology RAG, and personalized food safety reasoning.",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,6 +22,11 @@ app.include_router(analyze.router, prefix="/api/analyze", tags=["Analyze"])
 app.include_router(history.router, prefix="/api/history", tags=["History"])
 app.include_router(shared.router, prefix="/api/shared", tags=["Sharing"])
 
+
+@app.on_event("startup")
+def startup():
+    init_db()
+
 @app.get("/")
 async def root():
-    return {"message": "Food-Safe API is running"}
+    return {"message": "Gemma 4 Food-Safe AI API is running"}
