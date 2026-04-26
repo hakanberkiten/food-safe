@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+food_safe.db
+*.sqlite3
+knowledge/chroma/
+.idea/
+.vscode/

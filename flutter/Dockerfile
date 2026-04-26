@@ -5,13 +5,13 @@ WORKDIR /app
 COPY . .
 RUN flutter pub get
 
-# BACKEND_URL can be overridden at build time if needed.
-ARG BACKEND_URL=http://127.0.0.1:8000
+ARG BACKEND_URL=https://backend-production-cdeb7.up.railway.app
 RUN flutter build web --release --dart-define=BACKEND_URL=${BACKEND_URL}
 
 FROM nginx:stable-alpine
 
 COPY --from=build /app/build/web /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", "envsubst '$PORT' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
