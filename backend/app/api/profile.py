@@ -5,7 +5,6 @@ from app.core.database import get_db
 from app.models.user import UserProfile, User
 from app.api.auth import get_current_user_optional
 from pydantic import BaseModel
-from typing import List
 
 router = APIRouter()
 

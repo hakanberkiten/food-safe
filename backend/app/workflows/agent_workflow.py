@@ -90,24 +90,6 @@ class FoodSafeAgentWorkflow:
         )
 
 
-async def analyze_food_label(
-    image_bytes: bytes,
-    profile_data: dict,
-    mime_type: str = "image/jpeg",
-) -> WorkflowOutput:
-    workflow = FoodSafeAgentWorkflow()
-    profile = UserHealthProfile.model_validate(profile_data or {})
-    return await workflow.run(
-        image_bytes=image_bytes,
-        user_profile=profile,
-        mime_type=mime_type,
-    )
-
-
-    
-    
-    
-    
 def _normalize_ingredient_name(ingredient: str) -> str:
     lowered = ingredient.lower().strip()
     lowered = re.sub(r"\s+", " ", lowered)
