@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from io import BytesIO
 from typing import Any
@@ -106,15 +105,6 @@ Required JSON schema:
   "raw_text": "optional OCR text"
 }}
 """.strip()
-
-    def parse_model_response(self, payload: str | dict[str, Any]) -> IngredientExtraction:
-        if isinstance(payload, str):
-            cleaned = payload.strip().replace("```json", "").replace("```", "").strip()
-            data = json.loads(cleaned)
-        else:
-            data = payload
-
-        return IngredientExtraction.model_validate(data)
 
     def _empty_extraction(self) -> IngredientExtraction:
         return IngredientExtraction.model_validate(
