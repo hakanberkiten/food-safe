@@ -9,3 +9,11 @@ food_safe.db
 knowledge/chroma/
 .idea/
 .vscode/
+knowledge/en.openfoodfacts.org.products.csv
+knowledge/Open Food Facts Products.csv
+chroma_db/
+__pycache__/
+*.pyc
+.env
+.git
+.gitignore
